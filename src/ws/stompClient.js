@@ -12,7 +12,13 @@ import { WATCH_CONFIG } from '../types/watch';
 // Debug logging (set to false to disable verbose logs)
 const DEBUG_ENABLED = false;
 
-const WS_URL = process.env.REACT_APP_WS_URL;
+// ✅ WebSocket URL with fallback
+const WS_URL = process.env.REACT_APP_WS_URL || 'https://api.cartoon-too.me/ws/watch';
+
+// ⚠️ Warning if env var not set
+if (!process.env.REACT_APP_WS_URL) {
+  console.warn('[STOMP] REACT_APP_WS_URL not set, using fallback:', WS_URL);
+}
 
 class StompClient {
   constructor() {
