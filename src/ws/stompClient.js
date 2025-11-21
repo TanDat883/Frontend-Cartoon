@@ -43,34 +43,25 @@ class StompClient {
    */
   connect({ onConnect, onDisconnect, onError } = {}) {
     if (this.client?.connected) {
-      DEBUG_ENABLED && console.log('[STOMP] Already connected');
       onConnect?.();
       return;
     }
 
     if (this.isConnecting) {
-      DEBUG_ENABLED && console.log('[STOMP] Connection already in progress');
       return;
     }
 
     this.callbacks = { onConnect, onDisconnect, onError };
     this.isConnecting = true;
 
-    console.log('[STOMP] 🔌 Connecting to WebSocket:', WS_URL);
 
     this.client = new Client({
       webSocketFactory: () => {
         try {
-          console.log('[STOMP] 🏗️ Creating SockJS connection...');
           const sockjs = new SockJS(WS_URL, null, {
             transports: ['websocket', 'xhr-streaming', 'xhr-polling'], // Fallback transports
             timeout: 10000,
           });
-          
-          // Log SockJS connection lifecycle
-          sockjs.onopen = () => console.log('[STOMP] ✅ SockJS connection opened');
-          sockjs.onerror = (err) => console.error('[STOMP] ❌ SockJS error:', err);
-          sockjs.onclose = (event) => console.log('[STOMP] 🔒 SockJS closed:', event.code, event.reason);
           
           return sockjs;
         } catch (error) {
@@ -82,13 +73,8 @@ class StompClient {
       heartbeatIncoming: 10000, // Increased timeout
       heartbeatOutgoing: 10000,
       connectionTimeout: 15000, // Add connection timeout
-      debug: (str) => {
-        // Enable debug in development
-        if (DEBUG_ENABLED) console.log('[STOMP Debug]', str);
-      },
 
       onConnect: (frame) => {
-        console.log('[STOMP] ✅ Connected successfully');
         this.isConnecting = false;
         this.reconnectAttempt = 0;
         this.clearReconnectTimer();
@@ -96,7 +82,6 @@ class StompClient {
       },
 
       onDisconnect: (frame) => {
-        console.log('[STOMP] 🔌 Disconnected', frame?.headers?.message || '');
         this.isConnecting = false;
         this.callbacks.onDisconnect?.(frame);
       },
@@ -124,11 +109,6 @@ class StompClient {
       },
 
       onWebSocketClose: (event) => {
-        console.log('[STOMP] 🔒 WebSocket Closed:', {
-          code: event.code,
-          reason: event.reason || 'No reason provided',
-          wasClean: event.wasClean,
-        });
         this.isConnecting = false;
         this.scheduleReconnect();
       },
@@ -141,7 +121,6 @@ class StompClient {
    * Disconnect from server
    */
   disconnect() {
-    DEBUG_ENABLED && console.log('[STOMP] Disconnecting...');
     this.clearReconnectTimer();
     this.reconnectAttempt = 0;
 
@@ -178,10 +157,6 @@ class StompClient {
     const delays = WATCH_CONFIG.RECONNECT_DELAYS;
     const delay = delays[Math.min(this.reconnectAttempt, delays.length - 1)];
 
-    DEBUG_ENABLED && console.log(
-      `[STOMP] Reconnecting in ${delay}ms (attempt ${this.reconnectAttempt + 1})`
-    );
-
     this.reconnectTimer = setTimeout(() => {
       this.reconnectTimer = null;
       this.reconnectAttempt++;
@@ -211,8 +186,6 @@ class StompClient {
       return () => {};
     }
 
-    DEBUG_ENABLED && console.log('[STOMP] Subscribing to', destination);
-
     const subscription = this.client.subscribe(destination, (message) => {
       try {
         const body = JSON.parse(message.body);
@@ -226,7 +199,6 @@ class StompClient {
 
     // Return unsubscribe function
     return () => {
-      DEBUG_ENABLED && console.log('[STOMP] Unsubscribing from', destination);
       subscription.unsubscribe();
       this.subscriptions.delete(destination);
     };
@@ -252,8 +224,6 @@ class StompClient {
       console.error('[STOMP] Cannot send - not connected');
       return;
     }
-
-    DEBUG_ENABLED && console.log('[STOMP] Sending to', destination, body);
 
     this.client.publish({
       destination,

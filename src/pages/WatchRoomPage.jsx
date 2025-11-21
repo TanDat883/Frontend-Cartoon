@@ -60,8 +60,6 @@ export const WatchRoomPage = () => {
    * Handle room deleted/expired from WebSocket
    */
   const handleRoomDeleted = useCallback(({ reason, reasonText }) => {
-    // console.log('[WatchRoomPage] Room deleted/expired:', reason);
-    // console.log('[WatchRoomPage] Backend cascade deleted: messages + members');
         
     // Show blocking dialog
     setRoomDeletedReason(reasonText);
@@ -155,18 +153,6 @@ export const WatchRoomPage = () => {
         const fetchStartTime = Date.now();
         
         // Fetch room info from API
-        console.log('[WatchRoomPage] 🔄 Fetching room info from API...');
-        console.log('[WatchRoomPage] Current URL params:', {
-          roomId,
-          inviteCode: actualInviteCode, // ⚠️ Use state
-          isHostFromUrl,
-          searchParams: Object.fromEntries(searchParams.entries())
-        });
-        console.log('[WatchRoomPage] Current user info:', {
-          userId,
-          loggedInUserId: loggedInUser?.userId,
-          urlUserId: searchParams.get('userId')
-        });
         
         const roomData = await WatchRoomService.getWatchRoomById(roomId);
         
@@ -197,16 +183,6 @@ export const WatchRoomPage = () => {
         const roomOwnerId = roomData.userId ? String(roomData.userId) : null;
         const isRoomOwner = currentUserId && roomOwnerId && currentUserId === roomOwnerId;
         
-        console.log('[WatchRoomPage] Access check:', {
-          isCreatorByUrl,
-          isAdmin,
-          isRoomOwner,
-          isPublicRoom,
-          roomIsPrivate: roomData.isPrivate,
-          hasInviteCodeInUrl: !!actualInviteCode,
-          currentUserId,
-          roomOwnerId
-        });
 
         // Allow access if: creator URL param OR admin OR room owner OR public room
         if (isCreatorByUrl || isAdmin || isRoomOwner || isPublicRoom) {
@@ -214,25 +190,19 @@ export const WatchRoomPage = () => {
                               isAdmin ? 'Admin role' :
                               isRoomOwner ? 'Room owner' :
                               'Public room';
-          console.log(`[WatchRoomPage] ✅ Access granted - ${accessReason}`);
           
           // ⚠️ CRITICAL FIX: If private room and no invite code, get it from roomData
           if (roomData.isPrivate && !actualInviteCode && roomData.inviteCode) {
-            console.log(`[WatchRoomPage] 🔑 Private room - Setting invite code from API: ${roomData.inviteCode}`);
             setActualInviteCode(roomData.inviteCode); // ✅ Update state for WebSocket
-            console.log('[WatchRoomPage] ⏳ Invite code set, will trigger re-render and connect');
           } else if (roomData.isPrivate && actualInviteCode) {
-            console.log(`[WatchRoomPage] 🔑 Private room - Already have invite code: ${actualInviteCode}`);
           }
           
           // Continue to load video below
         } else {
           // Private room and not (creator/admin/owner) - need invite code
-          console.log('[WatchRoomPage] 🔒 Private room - checking invite code...');
           
           // If no invite code in URL, show modal
           if (!actualInviteCode) {
-            console.log('[WatchRoomPage] ❌ No invite code provided, showing modal');
             setShowInviteModal(true);
             setIsVerifyingAccess(false);
             return;
@@ -240,19 +210,16 @@ export const WatchRoomPage = () => {
 
           // Verify invite code
           try {
-            console.log('[WatchRoomPage] Verifying invite code...');
             const verifyResponse = await WatchRoomService.verifyInviteCode(roomId, actualInviteCode);
             
             if (!isMounted) return; // Exit if unmounted during verify
             
             if (!verifyResponse || !verifyResponse.valid) {
-              // console.log('[WatchRoomPage] ❌ Invalid invite code');
               setShowInviteModal(true);
               setIsVerifyingAccess(false);
               return;
             }
             
-            // console.log('[WatchRoomPage] ✅ Invite code verified successfully');
           } catch (error) {
             if (!isMounted) return; // Exit if unmounted during error
             
@@ -269,7 +236,6 @@ export const WatchRoomPage = () => {
         if (videoFromParams) {
           setVideoUrl(videoFromParams);
         } else if (roomData.videoUrl) {
-          // console.log('[WatchRoomPage] Fetched video URL from API:', roomData.videoUrl);
           setVideoUrl(roomData.videoUrl);
         } else {
           // console.warn('[WatchRoomPage] No video URL, using demo');
@@ -278,7 +244,6 @@ export const WatchRoomPage = () => {
         
         // Set initial video state (for persistence)
         if (roomData.videoState) {
-          // console.log('[WatchRoomPage] Fetched video state from API:', roomData.videoState);
           setInitialVideoState(roomData.videoState);
         }
 
@@ -394,48 +359,32 @@ export const WatchRoomPage = () => {
    * ⚠️ Use ref to track connection state and prevent duplicate connects
    */
   useEffect(() => {
-    console.log('[WatchRoomPage] 🔍 Connect useEffect triggered:', {
-      hasConnectedRef: hasConnectedRef.current,
-      roomId,
-      isVerifyingAccess,
-      accessDenied,
-      isPrivate: roomInfo?.isPrivate,
-      actualInviteCode: actualInviteCode ? '✅ Has code' : '❌ No code',
-    });
+
 
     // Skip if no roomId
     if (!roomId) {
-      console.log('[WatchRoomPage] ❌ No roomId, skipping');
       return;
     }
 
     // Already connected, don't reconnect (use ref to survive re-renders)
     if (hasConnectedRef.current) {
-      console.log('[WatchRoomPage] ✅ Already connected (ref), no action needed');
       return;
     }
 
     // Wait until access verification is complete
     if (isVerifyingAccess) {
-      console.log('[WatchRoomPage] ⏳ Still verifying access...');
       return;
     }
 
     // Don't connect if access denied
     if (accessDenied) {
-      console.log('[WatchRoomPage] ❌ Access denied, not connecting');
       return;
     }
 
     // ⚠️ CRITICAL: For private rooms, wait until actualInviteCode is set
     if (roomInfo?.isPrivate && !actualInviteCode) {
-      console.log('[WatchRoomPage] ⏳ Private room - waiting for invite code from API...');
       return;
     }
-
-    // All conditions met - connect!
-    console.log('[WatchRoomPage] ✅ All checks passed, connecting with inviteCode:', actualInviteCode);
-    console.log('[WatchRoomPage] Room info:', { isPrivate: roomInfo?.isPrivate, roomOwnerId: roomInfo?.userId });
     
     connect();
     hasConnectedRef.current = true; // ✅ Mark as connected in ref
@@ -450,14 +399,12 @@ export const WatchRoomPage = () => {
    */
   useEffect(() => {
     const handleBeforeUnload = () => {
-      console.log('[WatchRoomPage] Page closing - sending LEAVE');
       disconnect();
     };
 
     window.addEventListener('beforeunload', handleBeforeUnload);
 
     return () => {
-      console.log('[WatchRoomPage] 🧹 Cleanup: Removing beforeunload listener');
       window.removeEventListener('beforeunload', handleBeforeUnload);
     };
   }, [disconnect]);
@@ -467,7 +414,6 @@ export const WatchRoomPage = () => {
    */
   useEffect(() => {
     return () => {
-      console.log('[WatchRoomPage] 🚪 Component unmounting - disconnecting');
       disconnect();
       hasConnectedRef.current = false; // Reset ref for next mount
       setHasConnected(false); // Reset state
