@@ -56,20 +56,39 @@ class StompClient {
     this.callbacks = { onConnect, onDisconnect, onError };
     this.isConnecting = true;
 
-    DEBUG_ENABLED && console.log('[STOMP] Connecting to', WS_URL);
+    console.log('[STOMP] 🔌 Connecting to WebSocket:', WS_URL);
 
     this.client = new Client({
-      webSocketFactory: () => new SockJS(WS_URL),
+      webSocketFactory: () => {
+        try {
+          console.log('[STOMP] 🏗️ Creating SockJS connection...');
+          const sockjs = new SockJS(WS_URL, null, {
+            transports: ['websocket', 'xhr-streaming', 'xhr-polling'], // Fallback transports
+            timeout: 10000,
+          });
+          
+          // Log SockJS connection lifecycle
+          sockjs.onopen = () => console.log('[STOMP] ✅ SockJS connection opened');
+          sockjs.onerror = (err) => console.error('[STOMP] ❌ SockJS error:', err);
+          sockjs.onclose = (event) => console.log('[STOMP] 🔒 SockJS closed:', event.code, event.reason);
+          
+          return sockjs;
+        } catch (error) {
+          console.error('[STOMP] ❌ Failed to create SockJS:', error);
+          throw error;
+        }
+      },
       reconnectDelay: 0, // We handle reconnect manually
-      heartbeatIncoming: 4000,
-      heartbeatOutgoing: 4000,
-      debug: () => {
-        // Disable debug logs in production
-        // Enable only if needed for debugging: console.log('[STOMP Debug]', str);
+      heartbeatIncoming: 10000, // Increased timeout
+      heartbeatOutgoing: 10000,
+      connectionTimeout: 15000, // Add connection timeout
+      debug: (str) => {
+        // Enable debug in development
+        if (DEBUG_ENABLED) console.log('[STOMP Debug]', str);
       },
 
       onConnect: (frame) => {
-        DEBUG_ENABLED && console.log('[STOMP] Connected');
+        console.log('[STOMP] ✅ Connected successfully');
         this.isConnecting = false;
         this.reconnectAttempt = 0;
         this.clearReconnectTimer();
@@ -77,27 +96,39 @@ class StompClient {
       },
 
       onDisconnect: (frame) => {
-        DEBUG_ENABLED && console.log('[STOMP] Disconnected');
+        console.log('[STOMP] 🔌 Disconnected', frame?.headers?.message || '');
         this.isConnecting = false;
         this.callbacks.onDisconnect?.(frame);
       },
 
       onStompError: (frame) => {
-        console.error('[STOMP] Error', frame);
+        console.error('[STOMP] ❌ STOMP Protocol Error:', {
+          command: frame.command,
+          headers: frame.headers,
+          body: frame.body,
+        });
         this.isConnecting = false;
         this.callbacks.onError?.(frame);
         this.scheduleReconnect();
       },
 
       onWebSocketError: (event) => {
-        console.error('[STOMP] WebSocket Error', event);
+        console.error('[STOMP] ❌ WebSocket Error:', {
+          type: event.type,
+          target: event.target?.url || 'unknown',
+          readyState: event.target?.readyState,
+        });
         this.isConnecting = false;
         this.callbacks.onError?.(event);
         this.scheduleReconnect();
       },
 
       onWebSocketClose: (event) => {
-        DEBUG_ENABLED && console.log('[STOMP] WebSocket Closed');
+        console.log('[STOMP] 🔒 WebSocket Closed:', {
+          code: event.code,
+          reason: event.reason || 'No reason provided',
+          wasClean: event.wasClean,
+        });
         this.isConnecting = false;
         this.scheduleReconnect();
       },
