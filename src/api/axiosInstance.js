@@ -3,7 +3,7 @@ import axios from "axios";
 import AuthService from "../services/AuthService";
 
 const axiosInstance = axios.create({
-  baseURL: 'http://localhost:8080',
+  baseURL: process.env.REACT_APP_API_BASE_URL,
   timeout: 10000, // 10 seconds timeout
 });
 

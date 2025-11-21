@@ -263,7 +263,7 @@ export default function WatchPage() {
     // Add new subtitle tracks via proxy (SRT→VTT conversion + CORS fix + Content cleaning)
     availableSubtitles.forEach((subtitle, index) => {
       // Use backend proxy to handle CORS, SRT→VTT conversion, and content cleaning
-      const proxyUrl = `http://localhost:8080/proxy/subtitle?url=${encodeURIComponent(subtitle.url)}&clean=true`;
+      const proxyUrl = `${process.env.REACT_APP_API_BASE || process.env.REACT_APP_API_BASE_URL}/proxy/subtitle?url=${encodeURIComponent(subtitle.url)}&clean=true`;
 
       console.log('🎬 Adding subtitle via proxy (with cleaning):', {
         original: subtitle.url,

@@ -12,7 +12,7 @@ import { WATCH_CONFIG } from '../types/watch';
 // Debug logging (set to false to disable verbose logs)
 const DEBUG_ENABLED = false;
 
-const WS_URL = process.env.REACT_APP_WS_URL || 'http://localhost:8080/ws/watch';
+const WS_URL = process.env.REACT_APP_WS_URL;
 
 class StompClient {
   constructor() {

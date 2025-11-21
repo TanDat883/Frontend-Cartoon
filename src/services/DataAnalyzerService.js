@@ -1,6 +1,5 @@
 import axiosInstance from "../api/axiosInstance";
 
-// const API_BASE_URL = 'http://localhost:8080/data-analyzer';
 const API_BASE_URL = process.env.REACT_APP_API_BASE_URL + '/data-analyzer';
 
 const DataAnalyzerService = {

@@ -574,7 +574,7 @@ export function useWatchRoom({
           
           // Send via Beacon (survives page unload)
           navigator.sendBeacon(
-            `${process.env.REACT_APP_API_BASE || 'http://localhost:8080'}/watchrooms/${roomId}/leave`,
+            `${process.env.REACT_APP_API_BASE || process.env.REACT_APP_API_BASE_URL}/watchrooms/${roomId}/leave`,
             new Blob([leavePayload], { type: 'application/json' })
           );
           // console.log('[useWatchRoom] LEAVE sent via Beacon API');
