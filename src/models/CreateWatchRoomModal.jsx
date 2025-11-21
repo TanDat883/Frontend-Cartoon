@@ -5,6 +5,7 @@ import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import WatchRoomService from '../services/WatchRoomService';
+import axiosInstance from '../api/axiosInstance';
 import { toast } from 'react-toastify';
 import '../css/CreateWatchRoomModal.css';
 
@@ -31,16 +32,10 @@ const CreateWatchRoomModal = ({ show, onClose, movie, episode, currentVideoUrl }
     setIsCheckingVip(true);
 
     try {
-      const response = await fetch(`${process.env.REACT_APP_API_BASE}/users/${userId}/vip-status`);
+      // ✅ Use axiosInstance instead of fetch for better error handling
+      const response = await axiosInstance.get(`/users/${userId}/vip-status`);
       
-      if (!response.ok) {
-        setCanCreateRoom(false);
-        setVipMessage('⚠️ Không thể xác minh gói dịch vụ');
-        setIsCheckingVip(false);
-        return;
-      }
-      
-      const data = await response.json();
+      const data = response.data;
       setVipStatus(data);
       
       // Check all 3 conditions
