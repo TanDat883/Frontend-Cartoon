@@ -88,7 +88,7 @@ const ChatBox = ({ currentMovieId }) => {
     "Voucher giảm giá gói VIP hiện tại",
     "Ưu đãi đặc biệt hôm nay",
     "Mã giảm giá cho thành viên mới",
-    "Gợi ý phim hay đang hot"
+    "Gợi ý phim hoạt hình hay nhất",
   ]);
 
   // Hàm scroll xuống cuối

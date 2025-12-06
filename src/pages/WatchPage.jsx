@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState, useMemo, useCallback } from "react";
 import ReactDOM from "react-dom/client";
 import { createPortal } from "react-dom";
-import { Link, useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { Link, useLocation, useNavigate, useParams, useSearchParams, useOutletContext } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
 import RatingModal from "../components/RatingModal";
@@ -45,6 +45,8 @@ export default function WatchPage() {
   const params = useParams();
   const [searchParams] = useSearchParams();
   const { MyUser } = useAuth();
+  const outletContext = useOutletContext() || {};
+  const { setWatchPageMovieId } = outletContext;
 
   // -------- URL parsing (ID + Slug support)
   const isSlugFormat = !params.movieId; // If no movieId, then it's slug format
@@ -154,6 +156,16 @@ export default function WatchPage() {
     if (state?.episodes?.length) setEpsOfSeason(state.episodes);
     if (state?.seasons?.length) setSeasons(state.seasons);
   }, [state?.episode?.episodeId, state?.movie?.movieId]);
+
+  // ✅ Truyền movieId lên Layout để ChatBox biết phim đang xem
+  useEffect(() => {
+    if (currentMovie?.movieId && setWatchPageMovieId) {
+      setWatchPageMovieId(currentMovie.movieId);
+    }
+    return () => {
+      if (setWatchPageMovieId) setWatchPageMovieId(null);
+    };
+  }, [currentMovie?.movieId, setWatchPageMovieId]);
 
   // ✅ Kiểm tra quyền VIP khi có currentMovie
   useEffect(() => {

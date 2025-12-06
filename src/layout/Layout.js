@@ -11,12 +11,22 @@ const Layout = () => {
   const location = useLocation();
   const [movies, setMovies] = useState([]);
   const [filteredMovies, setFilteredMovies] = useState([]);
+  const [watchPageMovieId, setWatchPageMovieId] = useState(null);
 
-  // ✅ Extract movieId from current route for ChatBox context
+  // ✅ Extract movieId from route for ChatBox context
   const currentMovieId = useMemo(() => {
-    const movieDetailMatch = location.pathname.match(/^\/movie\/([^\/]+)/);
-    return movieDetailMatch ? movieDetailMatch[1] : null;
-  }, [location.pathname]);
+    // Priority 1: WatchPage truyền trực tiếp movieId (UUID)
+    if (watchPageMovieId) return watchPageMovieId;
+    
+    // Priority 2: Extract từ route (cho MovieDetailPage)
+    // HashRouter: actual route is in location.hash
+    const routePath = location.hash ? location.hash.replace('#', '') : location.pathname;
+    
+    // Match /movie/:id (MovieDetailPage)
+    const movieDetailMatch = routePath.match(/^\/movie\/([^\/]+)/);
+    
+    return movieDetailMatch?.[1] || null;
+  }, [location.pathname, location.hash, watchPageMovieId]);
 
   const fetchMovies = useCallback(async () => {
     try {
@@ -37,7 +47,7 @@ const Layout = () => {
     <>
       <Header fetchMovies={fetchMovies} setFilteredMovies={setFilteredMovies} />
       <ScrollManager /> 
-      <Outlet context={{ movies, setMovies }} />
+      <Outlet context={{ movies, setMovies, setWatchPageMovieId }} />
       <Footer />
       <ChatBox currentMovieId={currentMovieId} />
       {/* Left-side small faded scroll-to-top button (mirrors chatbox on the left) */}
