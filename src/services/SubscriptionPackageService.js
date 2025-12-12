@@ -35,25 +35,25 @@ const SubscriptionPackageService = {
 
             console.log('[SubscriptionPackageService] 🔄 Fetching packages from API...');
             const startTime = Date.now();
-            
+
             const response = await axiosInstance.get(`${API_BASE_URL}/all`, {
                 timeout: 10000, // 10s timeout
             });
-            
+
             const fetchTime = Date.now() - startTime;
             console.log(`[SubscriptionPackageService] ✅ API responded in ${fetchTime}ms`);
-            
+
             if (response.status !== 200) {
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
-            
+
             // Sort by price
             const sortedData = response.data.sort((a, b) => (a.amount || 0) - (b.amount || 0));
-            
+
             // ✅ Cache the result
             packagesCache = sortedData;
             cacheTimestamp = now;
-            
+
             return sortedData;
         } catch (error) {
             console.error('[SubscriptionPackageService] ❌ Error:', error);
@@ -92,10 +92,10 @@ const SubscriptionPackageService = {
         const res = await axiosInstance.post(`${API_BASE_URL}`, fd, {
             headers: { "Content-Type": "multipart/form-data" }, // có thể bỏ, axios tự set boundary
         });
-        
+
         // Clear cache after create
         SubscriptionPackageService.clearCache();
-        
+
         return res.data;
     },
     //update package
@@ -112,20 +112,31 @@ const SubscriptionPackageService = {
         const res = await axiosInstance.put(`${API_BASE_URL}/${packageId}`, fd, {
             headers: { "Content-Type": "multipart/form-data" },
         });
-        
+
         // Clear cache after update
         SubscriptionPackageService.clearCache();
-        
+
         return res.data;
     },
+    //check if package has active subscriptions
+    checkActiveSubscriptions: async (packageId) => {
+        try {
+            const response = await axiosInstance.get(`${API_BASE_URL}/${packageId}/has-active-subscriptions`);
+            return response.data;
+        } catch (error) {
+            console.error("Error checking active subscriptions:", error);
+            return { hasActiveSubscriptions: false };
+        }
+    },
+
     //delete package
     deletePackage: async (id) => {
         try {
             const response = await axiosInstance.delete(`${API_BASE_URL}/${id}`);
-            
+
             // Clear cache after delete
             SubscriptionPackageService.clearCache();
-            
+
             return response.data;
         } catch (error) {
             throw error.response ? error.response.data : error;

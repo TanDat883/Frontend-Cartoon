@@ -12,6 +12,7 @@ const SubscriptionPackageManagementPage = () => {
     const [keyword, setKeyword] = useState("");
     const [isCreateModalOpen, setCreateModalOpen] = useState(false);
     const [editingPkg, setEditingPkg] = useState(null);
+    const [activeSubscriptions, setActiveSubscriptions] = useState({}); // Track packages with active subscriptions
 
     // Load dữ liệu
     const loadSubscriptionPackages = async () => {
@@ -19,6 +20,14 @@ const SubscriptionPackageManagementPage = () => {
             const data = await SubscriptionPackageService.getAll(page, size, keyword);
             setSubscriptionPackages(data.items);
             setTotal(data.total);
+
+            // Check for active subscriptions for each package
+            const subscriptionChecks = {};
+            for (const pkg of data.items) {
+                const result = await SubscriptionPackageService.checkActiveSubscriptions(pkg.packageId);
+                subscriptionChecks[pkg.packageId] = result.hasActiveSubscriptions || false;
+            }
+            setActiveSubscriptions(subscriptionChecks);
         } catch (err) {
             console.error("Lỗi load gói đăng ký:", err);
         }
@@ -49,12 +58,25 @@ const SubscriptionPackageManagementPage = () => {
     };
 
     const handleDelete = async (packageId) => {
+        // Double check before deletion
+        if (activeSubscriptions[packageId]) {
+            alert("Không thể xóa gói đang có người dùng đăng ký ACTIVE!");
+            return;
+        }
+
         if (window.confirm("Bạn có chắc chắn muốn xóa gói đăng ký này?")) {
             try {
                 await SubscriptionPackageService.deletePackage(packageId);
                 setSubscriptionPackages((prev) => prev.filter((p) => p.packageId !== packageId));
+                // Remove from activeSubscriptions tracking
+                setActiveSubscriptions((prev) => {
+                    const updated = { ...prev };
+                    delete updated[packageId];
+                    return updated;
+                });
             } catch (err) {
                 console.error("Lỗi xóa gói đăng ký:", err);
+                alert(err.message || "Có lỗi xảy ra khi xóa gói đăng ký");
             }
         }
     };
@@ -126,13 +148,38 @@ const SubscriptionPackageManagementPage = () => {
                                                 >
                                                     <i className="fa-solid fa-pen-to-square"></i> Chỉnh sửa
                                                 </span>
-                                                <span
-                                                    className="btn btn-sm btn-outline-danger ms-2"
-                                                    style={{ borderRadius: 10, padding: "5px 10px", fontSize: 14 }}
-                                                    onClick={() => handleDelete(pkg.packageId)}
-                                                >
-                                                    <i className="fa-solid fa-trash"></i> Xóa
-                                                </span>
+                                                {(() => {
+                                                    const hasActiveSubscriptions = activeSubscriptions[pkg.packageId];
+                                                    const hasPriceList = pkg.currentPriceListId;
+                                                    const isDisabled = hasActiveSubscriptions || hasPriceList;
+
+                                                    let tooltipMessage = 'Xóa gói đăng ký';
+                                                    if (hasActiveSubscriptions && hasPriceList) {
+                                                        tooltipMessage = 'Không thể xóa: Gói đang có người dùng ACTIVE và thuộc bảng giá';
+                                                    } else if (hasActiveSubscriptions) {
+                                                        tooltipMessage = 'Không thể xóa: Gói đang có người dùng đăng ký ACTIVE';
+                                                    } else if (hasPriceList) {
+                                                        tooltipMessage = 'Không thể xóa: Gói đang thuộc bảng giá';
+                                                    }
+
+                                                    return (
+                                                        <span
+                                                            className={`btn btn-sm btn-outline-danger ms-2 ${isDisabled ? 'disabled' : ''}`}
+                                                            style={{
+                                                                borderRadius: 10,
+                                                                padding: "5px 10px",
+                                                                fontSize: 14,
+                                                                opacity: isDisabled ? 0.5 : 1,
+                                                                cursor: isDisabled ? 'not-allowed' : 'pointer',
+                                                                pointerEvents: isDisabled ? 'none' : 'auto'
+                                                            }}
+                                                            onClick={() => !isDisabled && handleDelete(pkg.packageId)}
+                                                            title={tooltipMessage}
+                                                        >
+                                                            <i className="fa-solid fa-trash"></i> Xóa
+                                                        </span>
+                                                    );
+                                                })()}
                                             </td>
                                         </tr>
                                     ))}
