@@ -125,7 +125,7 @@ const SubscriptionPackageService = {
             return response.data;
         } catch (error) {
             console.error("Error checking active subscriptions:", error);
-            return { hasActiveSubscriptions: false };
+            return false;
         }
     },
 
@@ -134,7 +134,6 @@ const SubscriptionPackageService = {
         try {
             const response = await axiosInstance.delete(`${API_BASE_URL}/${id}`);
 
-            // Clear cache after delete
             SubscriptionPackageService.clearCache();
 
             return response.data;

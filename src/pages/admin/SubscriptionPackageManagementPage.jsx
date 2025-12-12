@@ -25,7 +25,7 @@ const SubscriptionPackageManagementPage = () => {
             const subscriptionChecks = {};
             for (const pkg of data.items) {
                 const result = await SubscriptionPackageService.checkActiveSubscriptions(pkg.packageId);
-                subscriptionChecks[pkg.packageId] = result.hasActiveSubscriptions || false;
+                subscriptionChecks[pkg.packageId] = result === true;
             }
             setActiveSubscriptions(subscriptionChecks);
         } catch (err) {
