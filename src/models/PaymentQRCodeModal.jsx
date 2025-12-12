@@ -7,9 +7,12 @@ import "../css/PaymentPage.css";
 const PaymentQRCodeModal = ({ show, onClose, qrData }) => {
     const [timeLeft, setTimeLeft] = useState(15 * 60); // 15 phút = 900 giây
     const [paymentStatus, setPaymentStatus] = useState(null);
+    const [isChecking, setIsChecking] = useState(false); // Trạng thái đang kiểm tra
+
     useEffect(() => {
         if (show) {
             setTimeLeft(15 * 60); // Reset mỗi lần mở modal
+            setIsChecking(false);
         }
     }, [show]);
 
@@ -57,6 +60,12 @@ const PaymentQRCodeModal = ({ show, onClose, qrData }) => {
 
         return () => clearInterval(interval); // Dọn dẹp
     }, [show, qrData?.orderCode, onClose]);
+
+    const handleSafeClose = async () => {
+        setIsChecking(true);
+        await onClose(); // onClose sẽ kiểm tra payment status trước khi đóng
+        setIsChecking(false);
+    };
 
     const formatTime = (seconds) => {
         const m = Math.floor(seconds / 60).toString().padStart(2, '0');
@@ -120,16 +129,27 @@ const PaymentQRCodeModal = ({ show, onClose, qrData }) => {
                     className="text-white p-3 p-md-4 position-relative"
                     style={{ backgroundColor: "#1C1C1C", width: "100%" }}
                 >
-                    <i
-                        className="fas fa-times"
-                        onClick={onClose}
+                    <button
+                        className="btn btn-link text-white"
+                        onClick={handleSafeClose}
+                        disabled={isChecking}
                         style={{
                             position: "absolute",
                             top: "12px",
                             right: "12px",
-                            cursor: "pointer",
+                            cursor: isChecking ? "wait" : "pointer",
+                            fontSize: "20px",
+                            textDecoration: "none",
+                            padding: 0,
                         }}
-                    ></i>
+                        title={isChecking ? "Đang kiểm tra trạng thái..." : "Đóng"}
+                    >
+                        {isChecking ? (
+                            <i className="fas fa-spinner fa-spin"></i>
+                        ) : (
+                            <i className="fas fa-times"></i>
+                        )}
+                    </button>
                     <h6 className="fw-bold mb-4 text-center py-2 py-md-4">
                         Quét mã QR bằng ứng dụng VietQR để thanh toán dịch vụ{" "}
                         <b>Cartoon Too</b>
@@ -159,6 +179,22 @@ const PaymentQRCodeModal = ({ show, onClose, qrData }) => {
                             </div>
                         </div>
                     ))}
+
+                    {/* Warning Message */}
+                    <div
+                        className="alert alert-warning mt-4 mx-2 mx-md-4"
+                        style={{
+                            backgroundColor: '#FFC107',
+                            color: '#000',
+                            border: 'none',
+                            borderRadius: '8px',
+                            fontSize: '13px'
+                        }}
+                    >
+                        <i className="fas fa-exclamation-triangle me-2"></i>
+                        <strong>Lưu ý:</strong> Nếu bạn đã chuyển tiền, vui lòng <strong>KHÔNG đóng cửa sổ này</strong>.
+                        Hệ thống sẽ tự động xác nhận thanh toán trong vài giây.
+                    </div>
                 </div>
             </div>
         </div>

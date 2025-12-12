@@ -246,14 +246,55 @@ const PaymentPage = () => {
   const handleCancelPayment = async () => {
     try {
       if (!qrData?.orderCode) {
-        alert("Không có mã đơn hàng để hủy.");
+        setShowModal(false);
+        setQrData(null);
         return;
       }
+
+      // ⚠️ Kiểm tra trạng thái thanh toán trước khi hủy
+      const statusCheck = await PaymentService.getPaymentStatus(qrData.orderCode);
+
+      if (statusCheck.status === "PAID") {
+        // Nếu đã thanh toán thành công → Không cho hủy
+        toast.success("Thanh toán đã thành công! Đang chuyển hướng...");
+        await PaymentService.handleWebhook({
+          orderCode: qrData.orderCode,
+          status: "PAID"
+        });
+        window.location.href = "/main#/purchase-history";
+        return;
+      }
+
+      // Xác nhận trước khi hủy
+      const userConfirm = window.confirm(
+        "Bạn có chắc chắn muốn hủy thanh toán?\n\n" +
+        "⚠️ Lưu ý: Nếu bạn đã chuyển tiền, vui lòng KHÔNG hủy. " +
+        "Hệ thống sẽ tự động xác nhận trong vài giây."
+      );
+
+      if (!userConfirm) return;
+
+      // Kiểm tra lần cuối trước khi hủy
+      const finalCheck = await PaymentService.getPaymentStatus(qrData.orderCode);
+      if (finalCheck.status === "PAID") {
+        toast.success("Thanh toán đã thành công! Đang chuyển hướng...");
+        await PaymentService.handleWebhook({
+          orderCode: qrData.orderCode,
+          status: "PAID"
+        });
+        window.location.href = "/main#/purchase-history";
+        return;
+      }
+
+      // Chỉ hủy nếu chưa thanh toán
       await PaymentService.cancelPayment(qrData.orderCode);
       setShowModal(false);
       setQrData(null);
+      toast.info("Đã hủy giao dịch");
     } catch (err) {
       console.error("Lỗi khi hủy thanh toán:", err?.response?.data || err?.message);
+      // Nếu lỗi, vẫn đóng modal nhưng không hủy payment ở backend
+      setShowModal(false);
     }
   };
 
@@ -303,11 +344,10 @@ const PaymentPage = () => {
                       return (
                         <div
                           key={pkg.packageId}
-                          className={`d-flex align-items-center mb-3 rounded p-3 bg-dark ${
-                            selectedDurationPackage?.packageId === pkg.packageId
+                          className={`d-flex align-items-center mb-3 rounded p-3 bg-dark ${selectedDurationPackage?.packageId === pkg.packageId
                               ? "border border-dark"
                               : ""
-                          }`}
+                            }`}
                           onClick={() => setSelectedDurationPackage(pkg)}
                           style={{ cursor: "pointer" }}
                         >
